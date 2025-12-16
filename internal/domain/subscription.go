@@ -6,6 +6,7 @@ import (
 	"github.com/google/uuid"
 )
 
+// Subscription domain entity
 type Subscription struct {
 	ID          uuid.UUID
 	ServiceName string
