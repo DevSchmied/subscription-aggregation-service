@@ -1,8 +1,8 @@
 package main
 
 import (
-	"fmt"
 	"log"
+	"net/http"
 
 	"github.com/DevSchmied/subscription-aggregation-service/internal/config"
 )
@@ -15,5 +15,6 @@ func main() {
 		log.Fatal(err)
 	}
 
-	fmt.Println("Hello subscription-aggregation-service")
+	log.Println("App started")
+	http.ListenAndServe(":8080", nil)
 }
