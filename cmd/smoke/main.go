@@ -48,7 +48,7 @@ func main() {
 	}
 	log.Printf("created: %+v\n", created)
 
-	// Test get by ID operation
+	// Test get by ID
 	got, err := repo.GetByID(ctx, created.ID)
 	if err != nil {
 		log.Fatal(err)
