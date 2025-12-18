@@ -3,7 +3,6 @@ package handlers
 import (
 	"context"
 	"net/http"
-	"strconv"
 	"strings"
 	"time"
 
@@ -31,80 +30,81 @@ func NewSubscriptionsHandler(
 	}
 }
 
+// SubscriptionRequest defines create payload.
+type SubscriptionRequest struct {
+	ServiceName string `json:"service_name" binding:"required"`
+	Price       int    `json:"price" binding:"required"`
+	UserID      string `json:"user_id" binding:"required"`
+	StartDate   string `json:"start_date" binding:"required"` // MM-YYYY
+	EndDate     string `json:"end_date"`
+}
+
+// SubscriptionResponse defines API response.
+type SubscriptionResponse struct {
+	ID          string `json:"id"`
+	ServiceName string `json:"service_name"`
+	Price       int    `json:"price"`
+	UserID      string `json:"user_id"`
+	StartDate   string `json:"start_date"`
+	EndDate     string `json:"end_date"`
+	CreatedAt   string `json:"created_at"`
+	UpdatedAt   string `json:"updated_at"`
+}
+
 // Create handles subscription creation request.
 func (h *SubscriptionsHandler) Create(c *gin.Context) {
-	body := make(map[string]string)
+	req := SubscriptionRequest{}
 
-	if err := c.ShouldBindJSON(&body); err != nil {
+	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "invalid json",
 		})
 		return
 	}
 
-	// Normalize user input
-	serviceName := strings.TrimSpace(body["service_name"])
-	priceStr := strings.TrimSpace(body["price"])
-	userIDStr := strings.TrimSpace(body["user_id"])
-	startDateStr := strings.TrimSpace(body["start_date"])
-	endDateStr := strings.TrimSpace(body["end_date"])
-
-	// Validate required fields
-	if serviceName == "" || priceStr == "" || userIDStr == "" || startDateStr == "" {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "missing required fields",
-		})
+	serviceName := strings.TrimSpace(req.ServiceName)
+	if serviceName == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "service_name is required"})
 		return
 	}
 
-	price, err := strconv.Atoi(priceStr)
-	if err != nil || price < 0 {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "invalid price",
-		})
+	if req.Price < 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "price must be >= 0"})
 		return
 	}
 
-	userID, err := uuid.Parse(userIDStr)
+	userID, err := uuid.Parse(strings.TrimSpace(req.UserID))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "invalid user_id",
-		})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid user_id"})
 		return
 	}
 
-	start, err := utils.ParseMonthYear(startDateStr)
+	start, err := utils.ParseMonthYear(strings.TrimSpace(req.StartDate))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": err.Error(),
-		})
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
 	// Parse optional end date
 	var endPtr *time.Time
-	if endDateStr != "" {
-		end, err := utils.ParseMonthYear(endDateStr)
+	if end := strings.TrimSpace(req.EndDate); end != "" {
+		parsedEnd, err := utils.ParseMonthYear(end)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error": err.Error(),
-			})
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
-		if end.Before(start) {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error": "end_date before start_date",
-			})
+		if parsedEnd.Before(start) {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "end_date before start_date"})
 			return
 		}
-		endPtr = &end
+		endPtr = &parsedEnd
 	}
 
-	// Build domain model
+	// Build domain entity
 	sub := domain.Subscription{
 		ID:          uuid.New(),
 		ServiceName: serviceName,
-		Price:       price,
+		Price:       req.Price,
 		UserID:      userID,
 		StartDate:   start,
 		EndDate:     endPtr,
@@ -130,15 +130,18 @@ func (h *SubscriptionsHandler) Create(c *gin.Context) {
 		return ""
 	}()
 
+	// Build API response
+	resp := SubscriptionResponse{
+		ID:          out.ID.String(),
+		ServiceName: out.ServiceName,
+		Price:       out.Price,
+		UserID:      out.UserID.String(),
+		StartDate:   utils.FormatMonthYear(out.StartDate),
+		EndDate:     endDate,
+		CreatedAt:   out.CreatedAt.Format(time.RFC3339), // ISO timestamp format
+		UpdatedAt:   out.UpdatedAt.Format(time.RFC3339),
+	}
+
 	// Return created subscription
-	c.JSON(http.StatusCreated, gin.H{
-		"id":           out.ID.String(),
-		"service_name": out.ServiceName,
-		"price":        out.Price,
-		"user_id":      out.UserID.String(),
-		"start_date":   utils.FormatMonthYear(out.StartDate),
-		"end_date":     endDate,
-		"created_at":   out.CreatedAt.Format(time.RFC3339),
-		"updated_at":   out.UpdatedAt.Format(time.RFC3339),
-	})
+	c.JSON(http.StatusCreated, resp)
 }
