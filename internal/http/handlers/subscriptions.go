@@ -51,6 +51,28 @@ type SubscriptionResponse struct {
 	UpdatedAt   string `json:"updated_at"`
 }
 
+// toResponse maps domain subscription to API response.
+func toResponse(s domain.Subscription) SubscriptionResponse {
+	end := ""
+	// Format optional end date
+	if s.EndDate != nil {
+		end = utils.FormatMonthYear(*s.EndDate)
+	}
+
+	// Build API response
+	return SubscriptionResponse{
+		ID:          s.ID.String(),
+		ServiceName: s.ServiceName,
+		Price:       s.Price,
+		UserID:      s.UserID.String(),
+		StartDate:   utils.FormatMonthYear(s.StartDate),
+		EndDate:     end,
+		CreatedAt:   s.CreatedAt.Format(time.RFC3339), // ISO timestamp format
+		UpdatedAt:   s.UpdatedAt.Format(time.RFC3339),
+	}
+
+}
+
 // Create handles subscription creation request.
 func (h *SubscriptionsHandler) Create(c *gin.Context) {
 	req := SubscriptionRequest{}
@@ -122,25 +144,7 @@ func (h *SubscriptionsHandler) Create(c *gin.Context) {
 		return
 	}
 
-	// Format optional end date
-	endDate := func() string {
-		if out.EndDate != nil {
-			return utils.FormatMonthYear(*out.EndDate)
-		}
-		return ""
-	}()
-
-	// Build API response
-	resp := SubscriptionResponse{
-		ID:          out.ID.String(),
-		ServiceName: out.ServiceName,
-		Price:       out.Price,
-		UserID:      out.UserID.String(),
-		StartDate:   utils.FormatMonthYear(out.StartDate),
-		EndDate:     endDate,
-		CreatedAt:   out.CreatedAt.Format(time.RFC3339), // ISO timestamp format
-		UpdatedAt:   out.UpdatedAt.Format(time.RFC3339),
-	}
+	resp := toResponse(out)
 
 	// Return created subscription
 	c.JSON(http.StatusCreated, resp)
