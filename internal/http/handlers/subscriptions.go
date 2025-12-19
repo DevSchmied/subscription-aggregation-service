@@ -211,3 +211,22 @@ func (h *SubscriptionsHandler) Update(c *gin.Context) {
 
 	c.JSON(http.StatusOK, toResponse(out))
 }
+
+// Delete removes subscription by ID.
+func (h *SubscriptionsHandler) Delete(c *gin.Context) {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), h.dbTimeout)
+	defer cancel()
+
+	if err := h.repo.Delete(ctx, id); err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+		return
+	}
+
+	c.Status(http.StatusNoContent)
+}
