@@ -7,6 +7,7 @@ import (
 
 	"github.com/DevSchmied/subscription-aggregation-service/internal/config"
 	"github.com/DevSchmied/subscription-aggregation-service/internal/domain"
+	"github.com/DevSchmied/subscription-aggregation-service/internal/http/handlers"
 	"github.com/DevSchmied/subscription-aggregation-service/internal/http/router"
 	"github.com/DevSchmied/subscription-aggregation-service/internal/storage/postgres"
 	"github.com/google/uuid"
@@ -56,7 +57,11 @@ func main() {
 	}
 	log.Printf("got: %+v\n", got)
 
-	rtr := router.NewRouter()
+	subH := handlers.NewSubscriptionsHandler(repo, 3*time.Second)
+
+	rtr := router.NewRouter(router.Dependencies{
+		Subscriptions: subH,
+	})
 
 	addr := "localhost"
 	rtr.Run(addr + ":" + cfg.AppPort)

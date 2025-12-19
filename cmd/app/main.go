@@ -1,10 +1,14 @@
 package main
 
 import (
+	"context"
 	"log"
-	"net/http"
+	"time"
 
 	"github.com/DevSchmied/subscription-aggregation-service/internal/config"
+	"github.com/DevSchmied/subscription-aggregation-service/internal/http/handlers"
+	"github.com/DevSchmied/subscription-aggregation-service/internal/http/router"
+	"github.com/DevSchmied/subscription-aggregation-service/internal/storage/postgres"
 )
 
 func main() {
@@ -16,5 +20,24 @@ func main() {
 	}
 
 	log.Println("App started")
-	http.ListenAndServe(":8080", nil)
+
+	ctx := context.Background()
+
+	// Initialize PostgreSQL connection pool
+	pool, err := postgres.NewPool(ctx, cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer pool.Close()
+
+	// Create subscription repository
+	repo := postgres.NewSubscriptionRepo(pool)
+
+	subH := handlers.NewSubscriptionsHandler(repo, 3*time.Second)
+
+	rtr := router.NewRouter(router.Dependencies{
+		Subscriptions: subH,
+	})
+	addr := "localhost"
+	rtr.Run(addr + ":" + cfg.AppPort)
 }
