@@ -149,3 +149,23 @@ func (h *SubscriptionsHandler) Create(c *gin.Context) {
 	// Return created subscription
 	c.JSON(http.StatusCreated, resp)
 }
+
+// Get returns subscription by ID.
+func (h *SubscriptionsHandler) Get(c *gin.Context) {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), h.dbTimeout) // limit db time
+	defer cancel()
+
+	s, err := h.repo.GetByID(ctx, id)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+		return
+	}
+
+	c.JSON(http.StatusOK, toResponse(s))
+}
