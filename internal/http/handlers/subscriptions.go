@@ -230,3 +230,40 @@ func (h *SubscriptionsHandler) Delete(c *gin.Context) {
 
 	c.Status(http.StatusNoContent)
 }
+
+// List returns subscriptions with optional filters.
+func (h *SubscriptionsHandler) List(c *gin.Context) {
+	// Init list filter
+	var f postgres.ListFilter
+
+	if userIDStr := strings.TrimSpace(c.Query("user_id")); userIDStr != "" {
+		userID, err := uuid.Parse(userIDStr)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid user_id"})
+			return
+		}
+		// Set user ID filter
+		f.UserID = &userID
+	}
+
+	if serviceName := strings.TrimSpace(c.Query("service_name")); serviceName != "" {
+		// Set service filter
+		f.ServiceName = &serviceName
+	}
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), h.dbTimeout)
+	defer cancel()
+
+	items, err := h.repo.List(ctx, f)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "db error"})
+		return
+	}
+
+	resp := make([]SubscriptionResponse, 0, len(items))
+	for _, s := range items {
+		resp = append(resp, toResponse(s)) // map to dto
+	}
+
+	c.JSON(http.StatusOK, resp)
+}
