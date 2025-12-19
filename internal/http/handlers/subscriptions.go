@@ -169,3 +169,77 @@ func (h *SubscriptionsHandler) Get(c *gin.Context) {
 
 	c.JSON(http.StatusOK, toResponse(s))
 }
+
+// Update handles subscription update request.
+func (h *SubscriptionsHandler) Update(c *gin.Context) {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		return
+	}
+
+	req := SubscriptionRequest{}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid json"})
+		return
+	}
+
+	serviceName := strings.TrimSpace(req.ServiceName)
+	if serviceName == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "service_name is required"})
+		return
+	}
+
+	if req.Price < 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "price must be >= 0"})
+		return
+	}
+
+	userID, err := uuid.Parse(strings.TrimSpace(req.UserID))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid user_id"})
+		return
+	}
+
+	start, err := utils.ParseMonthYear(strings.TrimSpace(req.StartDate))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Parse optional end date
+	var endPtr *time.Time
+	if end := strings.TrimSpace(req.EndDate); end != "" {
+		parsedEnd, err := utils.ParseMonthYear(end)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		if parsedEnd.Before(start) {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "end_date before start_date"})
+			return
+		}
+		endPtr = &parsedEnd
+	}
+
+	// Build domain entity
+	sub := domain.Subscription{
+		ID:          id,
+		ServiceName: serviceName,
+		Price:       req.Price,
+		UserID:      userID,
+		StartDate:   start,
+		EndDate:     endPtr,
+	}
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), h.dbTimeout)
+	defer cancel()
+
+	out, err := h.repo.Update(ctx, sub)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "db error"})
+		return
+	}
+
+	c.JSON(http.StatusOK, toResponse(out))
+}
