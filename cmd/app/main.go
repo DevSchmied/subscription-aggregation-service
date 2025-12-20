@@ -34,10 +34,16 @@ func main() {
 	repo := postgres.NewSubscriptionRepo(pool)
 
 	subH := handlers.NewSubscriptionsHandler(repo, 3*time.Second)
+	aggH := handlers.NewAggregationHandler(repo, 3*time.Second)
 
 	rtr := router.NewRouter(router.Dependencies{
 		Subscriptions: subH,
+		Aggregation:   aggH,
 	})
+
+	log.Println("HTTP server started on port", cfg.AppPort)
 	addr := "localhost"
-	rtr.Run(addr + ":" + cfg.AppPort)
+	if err := rtr.Run(addr + ":" + cfg.AppPort); err != nil {
+		log.Fatal(err)
+	}
 }
