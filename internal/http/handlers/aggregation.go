@@ -26,6 +26,27 @@ func NewAggregationHandler(repo *postgres.SubscriptionRepo, dbTimeout time.Durat
 	}
 }
 
+// monthsInclusive returns number of full months between two dates, inclusive.
+func monthsInclusive(start, end time.Time) int {
+	return (end.Year()-start.Year())*12 + int(end.Month()-start.Month()) + 1
+}
+
+// maxTime returns the later of two time values.
+func maxTime(a, b time.Time) time.Time {
+	if a.After(b) {
+		return a
+	}
+	return b
+}
+
+// minTime returns the earlier of two time values.
+func minTime(a, b time.Time) time.Time {
+	if a.Before(b) {
+		return a
+	}
+	return b
+}
+
 // Total calculates subscription cost for a given period.
 // The sum includes only months when subscriptions were active.
 func (h *AggregationHandler) Total(c *gin.Context) {
@@ -96,18 +117,15 @@ func (h *AggregationHandler) Total(c *gin.Context) {
 
 	for _, s := range items {
 
-		// Determine actual start date of subscription
-		// within the requested period
-		activeStart := periodStart
-		if s.StartDate.After(periodStart) {
-			activeStart = s.StartDate
-		}
+		// Determine the actual start of subscription activity
+		// as the maximum of subscription start and period start
+		activeStart := maxTime(s.StartDate, periodStart)
 
-		// Determine actual end date of subscription
-		// within the requested period
+		// Determine the actual end of subscription activity
+		// as the minimum of subscription end (if any) and period end
 		activeEnd := periodEnd
-		if s.EndDate != nil && s.EndDate.Before(periodEnd) {
-			activeEnd = *s.EndDate
+		if s.EndDate != nil {
+			activeEnd = minTime(*s.EndDate, periodEnd)
 		}
 
 		// Skip subscriptions not active
@@ -117,8 +135,7 @@ func (h *AggregationHandler) Total(c *gin.Context) {
 		}
 
 		// Calculate number of active months (inclusive)
-		months := (activeEnd.Year()-activeStart.Year())*12 +
-			int(activeEnd.Month()-activeStart.Month()) + 1
+		months := monthsInclusive(activeStart, activeEnd)
 
 		// Add subscription cost for active months
 		total += months * s.Price
