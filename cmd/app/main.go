@@ -12,7 +12,7 @@ import (
 )
 
 func main() {
-	// Load application config
+	// Load application configuration (env)
 	cfg, err := config.Load()
 	_ = cfg
 	if err != nil {
@@ -33,14 +33,17 @@ func main() {
 	// Create subscription repository
 	repo := postgres.NewSubscriptionRepo(pool)
 
+	// Initialize HTTP handlers with DB timeout
 	subH := handlers.NewSubscriptionsHandler(repo, 3*time.Second)
 	aggH := handlers.NewAggregationHandler(repo, 3*time.Second)
 
+	// Build HTTP router and inject dependencies
 	rtr := router.NewRouter(router.Dependencies{
 		Subscriptions: subH,
 		Aggregation:   aggH,
 	})
 
+	// Start HTTP server
 	log.Println("HTTP server started on port", cfg.AppPort)
 	addr := "localhost"
 	if err := rtr.Run(addr + ":" + cfg.AppPort); err != nil {
