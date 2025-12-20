@@ -1,3 +1,8 @@
+// @title Subscription Aggregation API
+// @version 1.0
+// @description REST service for aggregating user subscription costs
+// @host localhost:8080
+// @BasePath /api
 package main
 
 import (
@@ -9,6 +14,8 @@ import (
 	"github.com/DevSchmied/subscription-aggregation-service/internal/http/handlers"
 	"github.com/DevSchmied/subscription-aggregation-service/internal/http/router"
 	"github.com/DevSchmied/subscription-aggregation-service/internal/storage/postgres"
+
+	_ "github.com/DevSchmied/subscription-aggregation-service/docs"
 )
 
 func main() {
@@ -45,8 +52,7 @@ func main() {
 
 	// Start HTTP server
 	log.Println("HTTP server started on port", cfg.AppPort)
-	addr := "localhost"
-	if err := rtr.Run(addr + ":" + cfg.AppPort); err != nil {
+	if err := rtr.Run(":" + cfg.AppPort); err != nil {
 		log.Fatal(err)
 	}
 }

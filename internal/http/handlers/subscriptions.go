@@ -125,6 +125,17 @@ func parseSubscriptionRequest(
 }
 
 // Create handles subscription creation request.
+//
+// @Summary Create subscription
+// @Description Create a new subscription record
+// @Tags subscriptions
+// @Accept json
+// @Produce json
+// @Param subscription body SubscriptionRequest true "Subscription data"
+// @Success 201 {object} SubscriptionResponse
+// @Failure 400 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /subscriptions [post]
 func (h *SubscriptionsHandler) Create(c *gin.Context) {
 	req := SubscriptionRequest{}
 
@@ -169,6 +180,15 @@ func (h *SubscriptionsHandler) Create(c *gin.Context) {
 }
 
 // Get returns subscription by ID.
+//
+// @Summary Get subscription
+// @Tags subscriptions
+// @Produce json
+// @Param id path string true "Subscription ID"
+// @Success 200 {object} SubscriptionResponse
+// @Failure 400 {object} map[string]string
+// @Failure 404 {object} map[string]string
+// @Router /subscriptions/{id} [get]
 func (h *SubscriptionsHandler) Get(c *gin.Context) {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
@@ -195,6 +215,17 @@ func (h *SubscriptionsHandler) Get(c *gin.Context) {
 }
 
 // Update handles subscription update request.
+//
+// @Summary Update subscription
+// @Tags subscriptions
+// @Accept json
+// @Produce json
+// @Param id path string true "Subscription ID"
+// @Param subscription body SubscriptionRequest true "Updated subscription data"
+// @Success 200 {object} SubscriptionResponse
+// @Failure 400 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /subscriptions/{id} [put]
 func (h *SubscriptionsHandler) Update(c *gin.Context) {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
@@ -236,6 +267,14 @@ func (h *SubscriptionsHandler) Update(c *gin.Context) {
 }
 
 // Delete removes subscription by ID.
+//
+// @Summary Delete subscription
+// @Tags subscriptions
+// @Param id path string true "Subscription ID"
+// @Success 204
+// @Failure 400 {object} map[string]string
+// @Failure 404 {object} map[string]string
+// @Router /subscriptions/{id} [delete]
 func (h *SubscriptionsHandler) Delete(c *gin.Context) {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
@@ -259,6 +298,16 @@ func (h *SubscriptionsHandler) Delete(c *gin.Context) {
 }
 
 // List returns subscriptions with optional filters.
+//
+// @Summary List subscriptions
+// @Tags subscriptions
+// @Produce json
+// @Param user_id query string false "User UUID"
+// @Param service_name query string false "Service name"
+// @Success 200 {array} SubscriptionResponse
+// @Failure 400 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /subscriptions [get]
 func (h *SubscriptionsHandler) List(c *gin.Context) {
 	// Init list filter
 	var f postgres.ListFilter

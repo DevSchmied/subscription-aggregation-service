@@ -3,6 +3,9 @@ package router
 import (
 	"github.com/DevSchmied/subscription-aggregation-service/internal/http/handlers"
 	"github.com/gin-gonic/gin"
+
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
 // Dependencies groups all HTTP handlers required by the router.
@@ -18,6 +21,9 @@ func NewRouter(d Dependencies) *gin.Engine {
 
 	// Register logging and panic recovery middleware
 	r.Use(gin.Logger(), gin.Recovery())
+
+	// Swagger UI
+	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	api := r.Group("/api")
 	{

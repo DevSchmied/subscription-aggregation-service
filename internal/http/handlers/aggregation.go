@@ -48,8 +48,21 @@ func minTime(a, b time.Time) time.Time {
 	return b
 }
 
-// Total calculates subscription cost for a given period.
+// Total calculates total subscription cost for a given period.
 // The sum includes only months when subscriptions were active.
+//
+// @Summary Aggregate subscription cost
+// @Description Calculates total subscription cost for a given period
+// @Tags aggregation
+// @Produce json
+// @Param start_date query string true "Start of period in MM-YYYY format"
+// @Param end_date query string true "End of period in MM-YYYY format"
+// @Param user_id query string false "User UUID"
+// @Param service_name query string false "Service name"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /subscriptions/total [get]
 func (h *AggregationHandler) Total(c *gin.Context) {
 	startStr := strings.TrimSpace(c.Query("start_date"))
 	endStr := strings.TrimSpace(c.Query("end_date"))
