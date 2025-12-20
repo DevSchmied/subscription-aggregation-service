@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"errors"
+	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -128,6 +129,7 @@ func (h *SubscriptionsHandler) Create(c *gin.Context) {
 	req := SubscriptionRequest{}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
+		log.Printf("Create: invalid json: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "invalid json",
 		})
@@ -137,7 +139,10 @@ func (h *SubscriptionsHandler) Create(c *gin.Context) {
 	// Parse request
 	sub, err := parseSubscriptionRequest(req, uuid.New())
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		log.Printf("Create: validation error: %v", err)
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
 		return
 	}
 
@@ -147,11 +152,15 @@ func (h *SubscriptionsHandler) Create(c *gin.Context) {
 
 	out, err := h.repo.Create(ctx, sub)
 	if err != nil {
+		log.Printf("Create: db error: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "db error",
 		})
 		return
 	}
+
+	log.Printf("Subscription created: id=%s user_id=%s service=%s",
+		out.ID, out.UserID, out.ServiceName)
 
 	resp := toResponse(out)
 
@@ -163,7 +172,10 @@ func (h *SubscriptionsHandler) Create(c *gin.Context) {
 func (h *SubscriptionsHandler) Get(c *gin.Context) {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		log.Printf("Get: invalid id: %v", err)
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "invalid id",
+		})
 		return
 	}
 
@@ -172,7 +184,10 @@ func (h *SubscriptionsHandler) Get(c *gin.Context) {
 
 	s, err := h.repo.GetByID(ctx, id)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+		log.Printf("Get: not found: id=%s", id)
+		c.JSON(http.StatusNotFound, gin.H{
+			"error": "not found",
+		})
 		return
 	}
 
@@ -183,12 +198,16 @@ func (h *SubscriptionsHandler) Get(c *gin.Context) {
 func (h *SubscriptionsHandler) Update(c *gin.Context) {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		log.Printf("Update: invalid id: %v", err)
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "invalid id",
+		})
 		return
 	}
 
 	var req SubscriptionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
+		log.Printf("Update: invalid json: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid json"})
 		return
 	}
@@ -196,6 +215,7 @@ func (h *SubscriptionsHandler) Update(c *gin.Context) {
 	// Parse request
 	sub, err := parseSubscriptionRequest(req, id)
 	if err != nil {
+		log.Printf("Update: validation error: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -205,9 +225,12 @@ func (h *SubscriptionsHandler) Update(c *gin.Context) {
 
 	out, err := h.repo.Update(ctx, sub)
 	if err != nil {
+		log.Printf("Update: db error: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "db error"})
 		return
 	}
+
+	log.Printf("Subscription updated: id=%s", out.ID)
 
 	c.JSON(http.StatusOK, toResponse(out))
 }
@@ -216,6 +239,7 @@ func (h *SubscriptionsHandler) Update(c *gin.Context) {
 func (h *SubscriptionsHandler) Delete(c *gin.Context) {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
+		log.Printf("Delete: invalid id: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
 		return
 	}
@@ -224,9 +248,12 @@ func (h *SubscriptionsHandler) Delete(c *gin.Context) {
 	defer cancel()
 
 	if err := h.repo.Delete(ctx, id); err != nil {
+		log.Printf("Delete: not found: id=%s", id)
 		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
 		return
 	}
+
+	log.Printf("Subscription deleted: id=%s", id)
 
 	c.Status(http.StatusNoContent)
 }
@@ -239,6 +266,7 @@ func (h *SubscriptionsHandler) List(c *gin.Context) {
 	if userIDStr := strings.TrimSpace(c.Query("user_id")); userIDStr != "" {
 		userID, err := uuid.Parse(userIDStr)
 		if err != nil {
+			log.Printf("List: invalid user_id: %v", err)
 			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid user_id"})
 			return
 		}
@@ -256,6 +284,7 @@ func (h *SubscriptionsHandler) List(c *gin.Context) {
 
 	items, err := h.repo.List(ctx, f)
 	if err != nil {
+		log.Printf("List: db error: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "db error"})
 		return
 	}

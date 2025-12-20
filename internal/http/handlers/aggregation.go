@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -54,6 +55,7 @@ func (h *AggregationHandler) Total(c *gin.Context) {
 	endStr := strings.TrimSpace(c.Query("end_date"))
 
 	if startStr == "" || endStr == "" {
+		log.Printf("Aggregation: missing start_date or end_date")
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "start_date and end_date required",
 		})
@@ -62,6 +64,7 @@ func (h *AggregationHandler) Total(c *gin.Context) {
 
 	periodStart, err := utils.ParseMonthYear(startStr)
 	if err != nil {
+		log.Printf("Aggregation: invalid start_date: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "invalid start_date",
 		})
@@ -70,6 +73,7 @@ func (h *AggregationHandler) Total(c *gin.Context) {
 
 	periodEnd, err := utils.ParseMonthYear(endStr)
 	if err != nil {
+		log.Printf("Aggregation: invalid end_date: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "invalid end_date",
 		})
@@ -81,6 +85,7 @@ func (h *AggregationHandler) Total(c *gin.Context) {
 	if v := strings.TrimSpace(c.Query("user_id")); v != "" {
 		parsedID, err := uuid.Parse(v)
 		if err != nil {
+			log.Printf("Aggregation: invalid user_id: %v", err)
 			c.JSON(http.StatusBadRequest, gin.H{
 				"error": "invalid user_id",
 			})
@@ -107,6 +112,7 @@ func (h *AggregationHandler) Total(c *gin.Context) {
 		periodEnd,
 	)
 	if err != nil {
+		log.Printf("Aggregation: db error: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "db error",
 		})
@@ -140,6 +146,15 @@ func (h *AggregationHandler) Total(c *gin.Context) {
 		// Add subscription cost for active months
 		total += months * s.Price
 	}
+
+	log.Printf(
+		"Aggregation calculated: total=%d period=%s-%s user_id=%v service=%v",
+		total,
+		startStr,
+		endStr,
+		userID,
+		serviceName,
+	)
 
 	// Return aggregation result
 	c.JSON(http.StatusOK, gin.H{
