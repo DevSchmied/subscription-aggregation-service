@@ -247,7 +247,7 @@ func (h *SubscriptionsHandler) List(c *gin.Context) {
 	}
 
 	if serviceName := strings.TrimSpace(c.Query("service_name")); serviceName != "" {
-		// Set service filter
+		// Set service name filter
 		f.ServiceName = &serviceName
 	}
 
