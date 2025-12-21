@@ -204,10 +204,16 @@ func (h *SubscriptionsHandler) Get(c *gin.Context) {
 
 	s, err := h.repo.GetByID(ctx, id)
 	if err != nil {
-		log.Printf("Get: not found: id=%s", id)
-		c.JSON(http.StatusNotFound, gin.H{
-			"error": "not found",
-		})
+		log.Printf("Get error: %v", err)
+
+		switch {
+		case errors.Is(err, postgres.ErrNotFound):
+			c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+		case errors.Is(err, context.DeadlineExceeded):
+			c.JSON(http.StatusGatewayTimeout, gin.H{"error": "timeout"})
+		default:
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "db error"})
+		}
 		return
 	}
 
@@ -256,8 +262,16 @@ func (h *SubscriptionsHandler) Update(c *gin.Context) {
 
 	out, err := h.repo.Update(ctx, sub)
 	if err != nil {
-		log.Printf("Update: db error: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "db error"})
+		log.Printf("Update error: %v", err)
+
+		switch {
+		case errors.Is(err, postgres.ErrNotFound):
+			c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+		case errors.Is(err, context.DeadlineExceeded):
+			c.JSON(http.StatusGatewayTimeout, gin.H{"error": "timeout"})
+		default:
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "db error"})
+		}
 		return
 	}
 
@@ -287,8 +301,16 @@ func (h *SubscriptionsHandler) Delete(c *gin.Context) {
 	defer cancel()
 
 	if err := h.repo.Delete(ctx, id); err != nil {
-		log.Printf("Delete: not found: id=%s", id)
-		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+		log.Printf("Delete error: %v", err)
+
+		switch {
+		case errors.Is(err, postgres.ErrNotFound):
+			c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+		case errors.Is(err, context.DeadlineExceeded):
+			c.JSON(http.StatusGatewayTimeout, gin.H{"error": "timeout"})
+		default:
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "db error"})
+		}
 		return
 	}
 

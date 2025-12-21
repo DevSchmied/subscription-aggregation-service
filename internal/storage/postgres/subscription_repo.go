@@ -2,11 +2,13 @@ package postgres
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
 	"github.com/DevSchmied/subscription-aggregation-service/internal/domain"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -89,6 +91,9 @@ func (r *SubscriptionRepo) GetByID(
 		&s.CreatedAt,
 		&s.UpdatedAt,
 	); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return domain.Subscription{}, ErrNotFound
+		}
 		return domain.Subscription{}, fmt.Errorf("get subscription by id: %w", err)
 	}
 
@@ -125,6 +130,9 @@ func (r *SubscriptionRepo) Update(
 		s.StartDate,
 		s.EndDate,
 	).Scan(&s.CreatedAt, &s.UpdatedAt); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return domain.Subscription{}, ErrNotFound
+		}
 		return domain.Subscription{}, fmt.Errorf("update subscription: %w", err)
 	}
 
@@ -150,7 +158,7 @@ func (r *SubscriptionRepo) Delete(
 
 	// Check affected rows
 	if affectedRows.RowsAffected() == 0 {
-		return fmt.Errorf("delete subscription: not found")
+		return ErrNotFound
 	}
 
 	return nil
