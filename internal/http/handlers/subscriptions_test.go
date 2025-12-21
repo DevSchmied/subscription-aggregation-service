@@ -1,16 +1,23 @@
 package handlers
 
 import (
+	"context"
+	"errors"
+	"fmt"
+	"net/http"
 	"testing"
 	"time"
 
 	"github.com/DevSchmied/subscription-aggregation-service/internal/domain"
+	"github.com/DevSchmied/subscription-aggregation-service/internal/storage/postgres"
 	"github.com/google/uuid"
 )
 
-// ============================
+// ==============================================================
+// ==============================================================
 // toResponse
-// ============================
+// ==============================================================
+// ==============================================================
 func TestToResponse_WithoutEndDate(t *testing.T) {
 	// Arrange
 	startDate := time.Date(2025, 7, 15, 10, 0, 0, 0, time.UTC)
@@ -86,9 +93,11 @@ func TestToResponse_WithEndDate(t *testing.T) {
 	}
 }
 
-// ============================
+// ==============================================================
+// ==============================================================
 // parseSubscriptionRequest
-// ============================
+// ==============================================================
+// ==============================================================
 func TestParseSubscriptionRequest_ValidWithoutEndDate(t *testing.T) {
 	// Arrange
 	req := SubscriptionRequest{
@@ -239,5 +248,103 @@ func TestParseSubscriptionRequest_EndDateBeforeStartDate(t *testing.T) {
 	// Assert
 	if err == nil {
 		t.Fatal("expected error, got nil")
+	}
+}
+
+// ==============================================================
+// ==============================================================
+// mapErrorToHTTP
+// ==============================================================
+// ==============================================================
+func TestMapErrorToHTTP_Nil(t *testing.T) {
+	// Act
+	code, msg := mapErrorToHTTP(nil)
+
+	// Assert
+	if code != http.StatusOK {
+		t.Errorf("expected %d, got %d", http.StatusOK, code)
+	}
+	if msg != "" {
+		t.Errorf("expected empty msg, got %q", msg)
+	}
+}
+
+func TestMapErrorToHTTP_NotFound(t *testing.T) {
+	// Arrange
+	err := postgres.ErrNotFound
+
+	// Act
+	code, msg := mapErrorToHTTP(err)
+
+	// Assert
+	if code != http.StatusNotFound {
+		t.Errorf("expected %d, got %d", http.StatusNotFound, code)
+	}
+	if msg != "not found" {
+		t.Errorf("expected %q, got %q", "not found", msg)
+	}
+}
+
+func TestMapErrorToHTTP_NotFoundWrappedWithFmt(t *testing.T) {
+	// Arrange
+	wrapped := fmt.Errorf("query failed: %w", postgres.ErrNotFound)
+
+	// Act
+	code, msg := mapErrorToHTTP(wrapped)
+
+	// Assert
+	if code != http.StatusNotFound {
+		t.Errorf("expected %d, got %d", http.StatusNotFound, code)
+	}
+	if msg != "not found" {
+		t.Errorf("expected %q, got %q", "not found", msg)
+	}
+}
+
+func TestMapErrorToHTTP_DeadlineExceeded(t *testing.T) {
+	// Arrange
+	err := context.DeadlineExceeded
+
+	// Act
+	code, msg := mapErrorToHTTP(err)
+
+	// Assert
+	if code != http.StatusGatewayTimeout {
+		t.Errorf("expected %d, got %d", http.StatusGatewayTimeout, code)
+	}
+	if msg != "timeout" {
+		t.Errorf("expected %q, got %q", "timeout", msg)
+	}
+}
+
+func TestMapErrorToHTTP_DeadlineExceededWrapped(t *testing.T) {
+	// Arrange
+	wrapped := errors.Join(context.DeadlineExceeded)
+
+	// Act
+	code, msg := mapErrorToHTTP(wrapped)
+
+	// Assert
+	if code != http.StatusGatewayTimeout {
+		t.Errorf("expected %d, got %d", http.StatusGatewayTimeout, code)
+	}
+	if msg != "timeout" {
+		t.Errorf("expected %q, got %q", "timeout", msg)
+	}
+}
+
+func TestMapErrorToHTTP_DefaultInternal(t *testing.T) {
+	// Arrange
+	err := errors.New("some db error")
+
+	// Act
+	code, msg := mapErrorToHTTP(err)
+
+	// Assert
+	if code != http.StatusInternalServerError {
+		t.Errorf("expected %d, got %d", http.StatusInternalServerError, code)
+	}
+	if msg != "db error" {
+		t.Errorf("expected %q, got %q", "db error", msg)
 	}
 }

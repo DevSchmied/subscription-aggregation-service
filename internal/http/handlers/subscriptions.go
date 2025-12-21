@@ -124,6 +124,20 @@ func parseSubscriptionRequest(
 	}, nil
 }
 
+// mapErrorToHTTP converts internal error to HTTP status + message.
+func mapErrorToHTTP(err error) (int, string) {
+	switch {
+	case err == nil:
+		return http.StatusOK, ""
+	case errors.Is(err, postgres.ErrNotFound):
+		return http.StatusNotFound, "not found"
+	case errors.Is(err, context.DeadlineExceeded):
+		return http.StatusGatewayTimeout, "timeout"
+	default:
+		return http.StatusInternalServerError, "db error"
+	}
+}
+
 // Create handles subscription creation request.
 //
 // @Summary Create subscription
@@ -206,14 +220,8 @@ func (h *SubscriptionsHandler) Get(c *gin.Context) {
 	if err != nil {
 		log.Printf("Get error: %v", err)
 
-		switch {
-		case errors.Is(err, postgres.ErrNotFound):
-			c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
-		case errors.Is(err, context.DeadlineExceeded):
-			c.JSON(http.StatusGatewayTimeout, gin.H{"error": "timeout"})
-		default:
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "db error"})
-		}
+		code, msg := mapErrorToHTTP(err)
+		c.JSON(code, gin.H{"error": msg})
 		return
 	}
 
@@ -264,14 +272,8 @@ func (h *SubscriptionsHandler) Update(c *gin.Context) {
 	if err != nil {
 		log.Printf("Update error: %v", err)
 
-		switch {
-		case errors.Is(err, postgres.ErrNotFound):
-			c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
-		case errors.Is(err, context.DeadlineExceeded):
-			c.JSON(http.StatusGatewayTimeout, gin.H{"error": "timeout"})
-		default:
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "db error"})
-		}
+		code, msg := mapErrorToHTTP(err)
+		c.JSON(code, gin.H{"error": msg})
 		return
 	}
 
@@ -303,14 +305,8 @@ func (h *SubscriptionsHandler) Delete(c *gin.Context) {
 	if err := h.repo.Delete(ctx, id); err != nil {
 		log.Printf("Delete error: %v", err)
 
-		switch {
-		case errors.Is(err, postgres.ErrNotFound):
-			c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
-		case errors.Is(err, context.DeadlineExceeded):
-			c.JSON(http.StatusGatewayTimeout, gin.H{"error": "timeout"})
-		default:
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "db error"})
-		}
+		code, msg := mapErrorToHTTP(err)
+		c.JSON(code, gin.H{"error": msg})
 		return
 	}
 
