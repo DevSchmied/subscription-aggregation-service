@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Clone repository
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Install Go
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+
+      # Download dependencies
+      - name: Download dependencies
+        run: go mod download
+
+      # Start tests
+      - name: Run tests
+        run: go test ./...
+
+      # Start go vet
+      - name: Run go vet
+        run: go vet ./...
+
+      # Build app
+      - name: Build application
+        run: go build ./cmd/app
